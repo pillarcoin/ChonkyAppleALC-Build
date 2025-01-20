@@ -1,7 +1,13 @@
 name: Build
 
 on:
-  workflow_call:
+  workflow_dispatch:
+    inputs:
+      codec:
+        description: '声卡型号 (例如: ALC897)'
+        required: true
+        type: string
+        default: 'ALC897'
 
 jobs:
   build:
@@ -45,28 +51,29 @@ jobs:
           mv Resources_bak/Controllers.plist Resources
           mv Resources_bak/Kexts.plist Resources
           mv Resources_bak/Vendors.plist Resources
-      - name: Set codecs list
-        working-directory: AppleALC
-        run: echo '::set-output name=CODECS::$(ls Resources_bak)'
-        id: codecs
-      - name: Build AppleALC for each codec
+          
+          # 检查指定的codec是否存在
+          if [ ! -d "Resources_bak/${{ inputs.codec }}" ]; then
+            echo "Error: Codec ${{ inputs.codec }} not found!"
+            exit 1
+          fi
+          
+          # 复制指定设备的所有文件
+          mkdir -p Resources/${{ inputs.codec }}
+          cp -r Resources_bak/${{ inputs.codec }}/* Resources/${{ inputs.codec }}/
+
+      - name: Build AppleALC
         working-directory: AppleALC
         run: |
-          for codec in ${{ steps.codecs.outputs.CODECS }}; do
-            if [ -d Resources_bak/$codec ]; then
-              echo "Start building $codec variant for AppleALC"
-              mv Resources_bak/$codec Resources/
-              xcodebuild -quiet -project AppleALC.xcodeproj -scheme AppleALC -configuration Release -sdk macosx -derivedDataPath out 
-              mv out/Build/Products/Release/*.zip ../Kexts/$codec.zip
-              rm -rf Resources/$codec out
-              echo "Finished building $codec variant for AppleALC"
-            fi
-          done;
+          xcodebuild -quiet -project AppleALC.xcodeproj -scheme AppleALC -configuration Release -sdk macosx -derivedDataPath out 
+          mv out/Build/Products/Release/*.zip ../Kexts/${{ inputs.codec }}.zip
+          rm -rf out
+
       - name: Upload to artifacts
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: Artifacts
+          name: ${{ inputs.codec }}
           path: Kexts/*
       - name: Upload to Release
         if: github.event_name == 'release'
