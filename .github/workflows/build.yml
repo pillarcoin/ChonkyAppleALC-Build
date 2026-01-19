@@ -20,7 +20,7 @@ jobs:
       - name: Create output directory for built kexts
         run: mkdir -p Kexts
       - name: Clone AppleALC from source
-        run: git clone https://github.com/acidanthera/AppleALC
+        run: git clone https://github.com/pillarcoin/AppleALC
       - name: Get AppleALC latest stable release
         id: applealc-latest-release
         working-directory: AppleALC
